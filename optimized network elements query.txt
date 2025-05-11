@@ -1,0 +1,142 @@
+WITH CarrierData AS (
+    SELECT 
+        cl.EnodebSectBandGrp AS UniqueID,
+        MIN(cl.Territory) AS Territory,
+        MIN(dm.Region) AS Region,
+        MIN(dm.MarketName) AS MARKETNAME,
+        cl.Market,
+        MIN(cl.Enodeb) AS Enodeb,
+        MIN(cl.EnodebSect) AS EnodebSect,
+        cl.EnodebSectGrp,
+        GROUP_CONCAT(DISTINCT cl.BANDGRP ORDER BY cl.technologytype SEPARATOR ';') AS BANDGRP,
+        cl.ENODEBSECTBANDGRPLOGIC,
+        cl.AGG_UNIQUEID,
+        cl.dss_enodebsectcarr AS DSSEnodebSectCarr,
+        MAX(cl.NWFID) AS FuzeSiteID,
+        MIN(cl.EnodebGrp) AS EnodebGrp,
+        MIN(cl.TechnologyType) AS technologyType,
+        GROUP_CONCAT(DISTINCT cl.SiteName ORDER BY cl.NWFID SEPARATOR ';') AS SiteName,
+        MIN(cl.Vendor) AS Vendor,
+        GROUP_CONCAT(DISTINCT cl.SiteType ORDER BY cl.NWFID SEPARATOR ';') AS SiteType,
+        MAX(cl.NWFID) AS NWFID,
+        MAX(cl.FIPS) AS FIPS,
+        MAX(cl.DirName) AS CMANAME,
+        MAX(cl.Seasonal) AS Seasonal,
+        GROUP_CONCAT(DISTINCT cl.OprBand ORDER BY cl.technologytype, cl.Carr SEPARATOR ';') AS OprBand,
+        cl.onairsince,
+        cl.ENODEBGRPLOGIC,
+        cl.ENODEBSECTGRPLOGIC,
+        dm.area AS AREA,
+        vq.AWS,
+        vq.AWS3,
+        vq.PCS,
+        vq.N77,
+        vq.CBRS,
+        vq.FDMIMO,
+        vq.MMW,
+        vq.LOAD_TIMESTAMP
+    FROM CARRIER_LOCATION_N5L cl
+    INNER JOIN DIR_MARKET dm ON cl.market = dm.market
+    INNER JOIN DIR_COUNTY dc ON cl.Market = dc.Market AND cl.FIPS = dc.FIPS
+        AND dc.MARKETSTR = dm.MARKETSTR
+    LEFT JOIN VISION_QUALIFICATION vq 
+        ON cl.nwfid = vq.FUZE_SITE_ID 
+        AND vq.SOURCE_DATE BETWEEN '2024-09-01' AND '2024-09-30'
+    LEFT JOIN SOLUTION_SITE_OFFLOAD_N5L_SNAPSHOT SS 
+        ON SS.AGG_UNIQUEID = cl.AGG_UNIQUEID 
+        AND SS.FUZESITEID = cl.NWFID
+    LEFT JOIN SOLUTION_N5L_SNAPSHOT S 
+        ON S.SolutionID = SS.SolutionID 
+        AND S.DELETED = 0 
+        AND S.DISABLED = 0
+        AND S.OnAirYear IN (0, 2025, 2026, 2027, 2028, 2029)
+        AND UPPER(S.STATUS) NOT IN ('CANCELLED', 'DELETED', 'REJECTED', 'REJECTED_PROPOSAL', 'CANCELED')
+    WHERE cl.ONAIR = 1
+        AND cl.Vendor IN ('SAM', 'NOK')
+        AND S.PARENTSOLUTIONID = 91912
+    GROUP BY cl.Market, cl.AGG_UNIQUEID, cl.EnodebSectBandGrp, cl.EnodebSectGrp, 
+             cl.ENODEBSECTBANDGRPLOGIC, cl.AGG_UNIQUEID, cl.dss_enodebsectcarr, 
+             cl.onairsince, cl.ENODEBGRPLOGIC, cl.ENODEBSECTGRPLOGIC, 
+             vq.AWS, vq.AWS3, vq.PCS, vq.N77, vq.CBRS, vq.FDMIMO, vq.MMW, vq.LOAD_TIMESTAMP
+)
+SELECT 
+    a.UniqueID,
+    a.Region,
+    IFNULL(a.AREA, '') AS AREA,
+    a.Territory,
+    a.EnodebSectGrp AS ENODEB_SECT_GRP,
+    IFNULL(vpidt.PERSISTENCEPRIORITY, 0) AS PERSISTENCE_PRIORITY,
+    a.Vendor,
+    CAST(a.Market AS SIGNED) AS Market,
+    CAST(a.Enodeb AS SIGNED) AS Enodeb,
+    a.EnodebGrp,
+    a.BANDGRP,
+    a.ENODEBSECTBANDGRPLOGIC,
+    a.AGG_UNIQUEID,
+    a.DSSEnodebSectCarr,
+    a.SiteName,
+    a.SiteType,
+    a.OprBand,
+    IF(a.onairsince > vpidt.generatedon, 'Yes', 'No') AS CarrierIdentifier,
+    a.NWFID,
+    a.FIPS,
+    IFNULL(vpidt.CEC_CURR, '-') AS CEC_CURR,
+    IFNULL(vpidt.BSS_DRIVER_CURR, '-') AS BSS_DRIVER_CURR,
+    IFNULL(vpidt.BSS_PERSEVERANCE5_CURR, 0) AS BSS_PERSEVERANCE5_CURR,
+    IFNULL(vpidt.BSS_PERSEVERANCE12_CURR, 0) AS BSS_PERSEVERANCE12_CURR,
+    IFNULL(vpidt.BSS_CONSECUTIVE_CURR, 0) AS BSS_CONSECUTIVE_CURR,
+    IFNULL(vpidt.CECAF, '0') AS CECAF,
+    a.ENODEBGRPLOGIC,
+    a.ENODEBSECTGRPLOGIC,
+    a.Seasonal,
+    IFNULL(vpidt.SE, 0) AS SE,
+    IFNULL(vpidt.KSP, 0) AS SectPriority,
+    a.MARKETNAME,
+    a.technologyType,
+    vpidt.MMW_KPI,
+    vpidt.LS6_KPI,
+    IFNULL(vpidt.du, '-') AS du,
+    a.AWS,
+    a.AWS3,
+    a.PCS,
+    a.N77,
+    a.CBRS,
+    a.FDMIMO,
+    a.MMW,
+    a.LOAD_TIMESTAMP,
+    vpidt.LAA_KPI,
+    vpidt.CBRS_KPI,
+    vpidt.CPTMONTH AS CPTMONTH,
+    a.CMANAME,
+    IFNULL(vpidt.TAFCURR, 0) AS TAFCURR,
+    IFNULL(vpidt.COMPUTILCURR, 0) AS COMPUTILCURR,
+    IFNULL(vpidt.TRGCURR, '-') AS TRGCURR,
+    IFNULL(vpidt.TRGCURRPCTL, 0) AS TRGCURRPCTL,
+    IFNULL(vpidt.TAFPRJD, 0) AS TAFPRJD,
+    IFNULL(vpidt.TAFPRJDNRM, 0) AS TAFPRJDNRM,
+    IFNULL(vpidt.AVGSECTP100PER, 0) AS AVGSECTP100PER,
+    IFNULL(vpidt.COMPUTILPRJD, 0) AS COMPUTILPRJD,
+    IFNULL(vpidt.TRGPRJD, '-') AS TRGPRJD,
+    IFNULL(vpidt.EXHAUSTDATE, '-') AS EXHAUSTDATE,
+    IFNULL(vpidt.DAYSUSED, 0) AS DAYSUSED,
+    IFNULL(vpidt.FDV_BHUSG3RD, 0) AS FDVBHUSG3RD,
+    IFNULL(vpidt.FDV_PRJD_USG, 0) AS FDVPRJDUSG,
+    IFNULL(vpidt.FDV_PRJD_USG_SCLD, 0) AS FDVPRJDUSGSCLD,
+    IFNULL(vpidt.FDV_CAPACITY, 0) AS FDVCAPACITY,
+    IFNULL(vpidt.FDV_GROWTHRATE, 0) AS FDVGROWTHRATE,
+    IFNULL(vpidt.ASEU_BHUSG3RD, 0) AS ASEUBHUSG3RD,
+    IFNULL(vpidt.ASEU_PRJD_USG, 0) AS ASEUPRJDUSG,
+    IFNULL(vpidt.ASEU_PRJD_USG_SCLD, 0) AS ASEUPRJDUSGSCLD,
+    IFNULL(vpidt.ASEU_CAPACITY, 0) AS ASEUCAPACITY,
+    IFNULL(vpidt.ASEU_GROWTHRATE, 0) AS ASEUGROWTHRATE,
+    IFNULL(vpidt.AVGAC_BHUSG3RD, 0) AS AVGACBHUSG3RD,
+    IFNULL(vpidt.AVGAC_PRJD_USG, 0) AS AVGACPRJDUSG,
+    IFNULL(vpidt.AVGAC_PRJD_USG_SCLD, 0) AS AVGACPRJDUSGSCLD,
+    IFNULL(vpidt.AVGAC_CAPACITY, 0) AS AVGACCAPACITY,
+    IFNULL(vpidt.AVGAC_GROWTHRATE, 0) AS AVGACGROWTHRATE
+FROM CarrierData a
+LEFT JOIN VPI_DATA_N5L vpidt 
+    ON a.AGG_UNIQUEID = vpidt.agg_unique_id
+    AND vpidt.cptmonth = '2025-01-01'
+    AND vpidt.projecteddate = '2025'
+LIMIT 10;
