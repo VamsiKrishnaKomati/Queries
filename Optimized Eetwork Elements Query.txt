@@ -1,0 +1,139 @@
+SELECT 
+    a.UniqueID,
+    a.Region,
+    COALESCE(a.AREA, '') AS AREA,
+    a.Territory,
+    a.EnodebSectGrp AS ENODEB_SECT_GRP,
+    COALESCE(vpidt.PERSISTENCEPRIORITY, 0) AS PERSISTENCE_PRIORITY,
+    a.Vendor,
+    a.Market,
+    a.Enodeb,
+    a.EnodebGrp,
+    a.BANDGRP,
+    a.ENODEBSECTBANDGRPLOGIC,
+    a.AGG_UNIQUEID,
+    a.DSSEnodebSectCarr,
+    a.SiteName,
+    a.SiteType,
+    a.OprBand,
+    CASE WHEN a.onairsince > vpidt.generatedon THEN 'Yes' ELSE 'No' END AS CarrierIdentifier,
+    a.NWFID,
+    a.FIPS,
+    COALESCE(vpidt.CEC_CURR, '-') AS CEC_CURR,
+    COALESCE(vpidt.BSS_DRIVER_CURR, '-') AS BSS_DRIVER_CURR,
+    COALESCE(vpidt.BSS_PERSEVERANCE5_CURR, 0) AS BSS_PERSEVERANCE5_CURR,
+    COALESCE(vpidt.BSS_PERSEVERANCE12_CURR, 0) AS BSS_PERSEVERANCE12_CURR,
+    COALESCE(vpidt.BSS_CONSECUTIVE_CURR, 0) AS BSS_CONSECUTIVE_CURR,
+    COALESCE(vpidt.CECAF, '0') AS CECAF,
+    a.ENODEBGRPLOGIC,
+    a.ENODEBSECTGRPLOGIC,
+    a.Seasonal,
+    COALESCE(vpidt.SE, 0) AS SE,
+    COALESCE(vpidt.KSP, 0) AS SectPriority,
+    a.MARKETNAME,
+    a.technologyType,
+    vpidt.MMW_KPI,
+    vpidt.LS6_KPI,
+    COALESCE(vpidt.du, '-') AS du,
+    a.AWS, a.AWS3, a.PCS, a.N77, a.CBRS, a.FDMIMO, a.MMW, a.LOAD_TIMESTAMP,
+    vpidt.LAA_KPI, vpidt.CBRS_KPI, vpidt.CPTMONTH, a.CMANAME,
+    COALESCE(vpidt.TAFCURR, 0) AS TAFCURR,
+    COALESCE(vpidt.COMPUTILCURR, 0) AS COMPUTILCURR,
+    COALESCE(vpidt.TRGCURR, '-') AS TRGCURR,
+    COALESCE(vpidt.TRGCURRPCTL, 0) AS TRGCURRPCTL,
+    COALESCE(vpidt.TAFPRJD, 0) AS TAFPRJD,
+    COALESCE(vpidt.TAFPRJDNRM, 0) AS TAFPRJDNRM,
+    COALESCE(vpidt.AVGSECTP100PER, 0) AS AVGSECTP100PER,
+    COALESCE(vpidt.COMPUTILPRJD, 0) AS COMPUTILPRJD,
+    COALESCE(vpidt.TRGPRJD, '-') AS TRGPRJD,
+    COALESCE(vpidt.EXHAUSTDATE, '-') AS EXHAUSTDATE,
+    COALESCE(vpidt.DAYSUSED, 0) AS DAYSUSED,
+    COALESCE(vpidt.FDV_BHUSG3RD, 0) AS FDVBHUSG3RD,
+    COALESCE(vpidt.FDV_PRJD_USG, 0) AS FDVPRJDUSG,
+    COALESCE(vpidt.FDV_PRJD_USG_SCLD, 0) AS FDVPRJDUSGSCLD,
+    COALESCE(vpidt.FDV_CAPACITY, 0) AS FDVCAPACITY,
+    COALESCE(vpidt.FDV_GROWTHRATE, 0) AS FDVGROWTHRATE,
+    COALESCE(vpidt.ASEU_BHUSG3RD, 0) AS ASEUBHUSG3RD,
+    COALESCE(vpidt.ASEU_PRJD_USG, 0) AS ASEUPRJDUSG,
+    COALESCE(vpidt.ASEU_PRJD_USG_SCLD, 0) AS ASEUPRJDUSGSCLD,
+    COALESCE(vpidt.ASEU_CAPACITY, 0) AS ASEUCAPACITY,
+    COALESCE(vpidt.ASEU_GROWTHRATE, 0) AS ASEUGROWTHRATE,
+    COALESCE(vpidt.AVGAC_BHUSG3RD, 0) AS AVGACBHUSG3RD,
+    COALESCE(vpidt.AVGAC_PRJD_USG, 0) AS AVGACPRJDUSG,
+    COALESCE(vpidt.AVGAC_PRJD_USG_SCLD, 0) AS AVGACPRJDUSGSCLD,
+    COALESCE(vpidt.AVGAC_CAPACITY, 0) AS AVGACCAPACITY,
+    COALESCE(vpidt.AVGAC_GROWTHRATE, 0) AS AVGACGROWTHRATE
+FROM (
+    SELECT 
+        cl.EnodebSectBandGrp AS UniqueID,
+        dm.Region,
+        dm.area AS AREA,
+        MIN(cl.Territory) AS Territory,
+        cl.EnodebSectGrp,
+        cl.Market,
+        MIN(cl.Enodeb) AS Enodeb,
+        cl.Vendor,
+        MIN(cl.EnodebGrp) AS EnodebGrp,
+        GROUP_CONCAT(DISTINCT cl.BANDGRP ORDER BY cl.technologytype SEPARATOR ';') AS BANDGRP,
+        cl.ENODEBSECTBANDGRPLOGIC,
+        cl.AGG_UNIQUEID,
+        cl.dss_enodebsectcarr AS DSSEnodebSectCarr,
+        MAX(cl.NWFID) AS NWFID,
+        MIN(cl.SiteName) AS SiteName,
+        MIN(cl.SiteType) AS SiteType,
+        MAX(cl.FIPS) AS FIPS,
+        MAX(cl.CMAName) AS CMANAME,
+        MAX(cl.Seasonal) AS Seasonal,
+        GROUP_CONCAT(DISTINCT cl.OprBand ORDER BY cl.technologytype, cl.Carr SEPARATOR ';') AS OprBand,
+        cl.onairsince,
+        cl.ENODEBGRPLOGIC,
+        cl.ENODEBSECTGRPLOGIC,
+        MIN(dm.MarketName) AS MARKETNAME,
+        MIN(cl.TechnologyType) AS technologyType,
+        vq.AWS, vq.AWS3, vq.PCS, vq.N77, vq.CBRS, vq.FDMIMO, vq.MMW, vq.LOAD_TIMESTAMP
+    FROM CARRIER_LOCATION_N5L cl
+    INNER JOIN DIR_MARKET dm 
+        ON cl.market = dm.market 
+        AND EXISTS (
+            SELECT 1 
+            FROM DIR_COUNTY dc 
+            WHERE dc.Market = cl.Market 
+            AND dc.FIPS = cl.FIPS 
+            AND dc.MARKETSTR = dm.MARKETSTR
+        )
+    LEFT JOIN VISION_QUALIFICATION vq 
+        ON cl.nwfid = vq.FUZE_SITE_ID 
+        AND vq.SOURCE_DATE BETWEEN '2024-09-01' AND '2024-09-30'
+    LEFT JOIN SOLUTION_SITE_OFFLOAD_N5L_SNAPSHOT ss 
+        ON ss.AGG_UNIQUEID = cl.AGG_UNIQUEID 
+        AND ss.FUZESITEID = cl.NWFID
+    LEFT JOIN SOLUTION_N5L_SNAPSHOT s 
+        ON s.SolutionID = ss.SolutionID 
+        AND s.DELETED = 0 
+        AND s.DISABLED = 0 
+        AND s.OnAirYear IN (0, 2025, 2026, 2027, 2028, 2029)
+        AND UPPER(s.STATUS) NOT IN ('CANCELLED', 'DELETED', 'REJECTED', 'REJECTED_PROPOSAL', 'CANCELED')
+    WHERE cl.ONAIR = 1
+        AND cl.Vendor IN ('SAM', 'NOK')
+        AND s.PARENTSOLUTIONID = 91912
+    GROUP BY 
+        cl.Market, 
+        cl.AGG_UNIQUEID, 
+        cl.EnodebSectBandGrp, 
+        cl.EnodebSectGrp, 
+        cl.Vendor, 
+        cl.ENODEBSECTBANDGRPLOGIC, 
+        cl.AGG_UNIQUEID, 
+        cl.dss_enodebsectcarr, 
+        cl.onairsince, 
+        cl.ENODEBGRPLOGIC, 
+        cl.ENODEBSECTGRPLOGIC,
+        dm.Region,
+        dm.area,
+        vq.AWS, vq.AWS3, vq.PCS, vq.N77, vq.CBRS, vq.FDMIMO, vq.MMW, vq.LOAD_TIMESTAMP
+) a
+LEFT JOIN VPI_DATA_N5L vpidt 
+    ON a.AGG_UNIQUEID = vpidt.agg_unique_id 
+    AND vpidt.cptmonth = '2025-01-01' 
+    AND vpidt.projecteddate = '2025'
+LIMIT 10 OFFSET 0;
